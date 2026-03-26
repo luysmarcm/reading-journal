@@ -48,40 +48,72 @@ export default async function LibraryComponent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {books.map((b) => (
             <Link key={b.id} href={`/entry/${b.id}`} className="group">
-              <div className="bg-white rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-stone-100 h-full transition-all hover:shadow-md hover:-translate-y-1">
-                
-                {/* Portada / Cover Placeholder */}
-                <div className="relative aspect-[3/4] rounded-lg mb-4 overflow-hidden bg-stone-50 border border-stone-50 flex flex-col items-center justify-center p-6 text-center group-hover:bg-stone-100 transition-colors">
-                  <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[9px] font-bold px-2 py-0.5 rounded-full text-stone-500 tracking-wider shadow-sm uppercase">
-                    {b.status || "TBR"}
-                  </span>
-                  
-                  {/* Si tienes b.coverUrl úsalo aquí, si no, mostramos el título estilo minimal */}
-                  {b.cover ? (
-                    <img src={b.cover} alt={b.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-stone-300 font-serif text-[10px] uppercase tracking-[0.2em] leading-relaxed">
-                      {b.title}
-                    </div>
-                  )}
-                </div>
+              {/* BLOQUE IZQUIERDO: Portada e Info Básica */}
+<div className="w-full md:w-[420px] flex-shrink-0 space-y-5">
+  
+  {/* Contenedor Flex para Foto + Texto al lado */}
+  <div className="flex items-start gap-6">
+    
+    {/* Portada con rotación estilo Scrapbook */}
+    <div className="w-32 md:w-36 flex-shrink-0">
+      <div className="aspect-[3/4] rounded-lg overflow-hidden shadow-xl border-4 border-white rotate-[-1.5deg] bg-stone-100">
+        <SafeImage 
+          src={entry.display_cover} 
+          alt={entry.display_title} 
+          className="w-full h-full object-cover" 
+        />
+      </div>
+    </div>
 
-                {/* Info del libro */}
-                <div className="space-y-1 mb-6">
-                  <h2 className="font-serif text-[14px] leading-tight text-stone-800 line-clamp-2 group-hover:text-pink-800 transition-colors">
-                    {b.title}
-                  </h2>
-                  <p className="text-stone-400 text-[11px] italic">{b.author}</p>
-                </div>
+    {/* Texto al lado de la foto (Título, Autor, Progreso) */}
+    <div className="flex-1 pt-2 space-y-1.5">
+      <h2 className="font-serif text-[18px] leading-tight text-stone-800 line-clamp-2">
+        {entry.display_title}
+      </h2>
+      <p className="text-stone-400 text-xs italic">
+        by {entry.display_author}
+      </p>
 
-                {/* Footer de la Card */}
-                <div className="pt-3 border-t border-stone-50 flex justify-between items-center">
-                  <span className="text-[10px] text-stone-300 font-medium">
-                    {b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Added Recently'}
-                  </span>
-                  <MoreHorizontal className="w-3.5 h-3.5 text-stone-300" />
-                </div>
-              </div>
+      {/* BARRA DE PROGRESO (Solo si está en estado 'Reading') */}
+      {entry.display_status === "Reading" && (
+        <div className="pt-3 pb-2 space-y-1.5">
+          <div className="flex justify-between text-[10px] text-stone-400 font-sans font-bold">
+            <span>{entry.porcentaje || 0}%</span>
+            <span>{entry.paginas_leidas || 0} / {entry.pages || 0} p</span>
+          </div>
+          <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-pink-200 transition-all duration-700 ease-in-out"
+              style={{ width: `${entry.porcentaje || 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="pt-1">
+        {renderRating(entry.rating)}
+      </div>
+    </div>
+  </div>
+  
+  {/* Tags Dinámicos debajo de la foto */}
+  <div className="flex flex-col gap-2.5 pt-5 border-t border-stone-100/60">
+    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase bg-[#f5f0eb]/70 text-[#7c6a5a] w-fit">
+      <Smile size={12} className="opacity-60" /> {entry.moods?.split(',')[0] || 'Reflective'}
+    </span>
+    
+    {/* Status dinámico con colores del mockup */}
+    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase w-fit ${
+      entry.display_status === "Finished" 
+        ? "bg-[#e1f0e9] text-[#2c7553]" 
+        : entry.display_status === "Reading"
+        ? "bg-[#fdf4ff] text-[#a21caf]"
+        : "bg-stone-100 text-stone-500"
+    }`}>
+      <CheckCircle size={12} className="opacity-70" /> {entry.display_status}
+    </span>
+  </div>
+</div>
             </Link>
           ))}
         </div>

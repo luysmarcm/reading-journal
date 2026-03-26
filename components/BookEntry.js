@@ -5,23 +5,46 @@ import {
   Smile, Coffee, HeartCrack, ChevronLeft, Calendar, X
 } from 'lucide-react';
 
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'Añadido recientemente';
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('es-ES', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    }).format(date);
+  } catch (e) { return dateString; }
+};
+
+
 const BookEntry = ({ initialData, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Estado inicial dinámico basado en las props
-  const [bookData, setBookData] = useState({
-    title: initialData?.title || "",
-    author: initialData?.author || "",
-    genre: initialData?.genre || "Fiction",
-    startDate: initialData?.entry?.date_start || "",
-    endDate: initialData?.entry?.date_end || "",
-    moods: initialData?.entry?.moods ? initialData.entry.moods.split(',') : [],
-    thoughts: initialData?.entry?.thoughts || "",
-    quotes: initialData?.entry?.quotes ? JSON.parse(initialData.entry.quotes) : [
-      { text: "", page: "" }
-    ]
-  });
+const [bookData, setBookData] = useState({
+  // Datos principales del libro (Pestaña Books)
+  id: initialData?.id || "",
+  title: initialData?.title || "",
+  author: initialData?.author || "",
+  pages: initialData?.pages || "",
+  status: initialData?.status || "Plan to Read",
+  cover: initialData?.cover || "",
+  rating: initialData?.rating !== undefined ? parseInt(initialData.rating) : 0,
+  gener: initialData?.gener || "Fiction", // Coincide con tu columna 'gener'
+  format: initialData?.format || "Physical",
+  
+  // Datos de la lectura/entrada (Pestaña Entries)
+  startDate: initialData?.date_start || "", // Mapeado de date_start
+  endDate: initialData?.date_end || "",     // Mapeado de date_end
+  
+  // Datos específicos de la reseña
+  moods: initialData?.entry?.moods ? initialData.entry.moods.split(',') : [],
+  thoughts: initialData?.entry?.thoughts || "",
+  quotes: initialData?.entry?.quotes ? JSON.parse(initialData.entry.quotes) : [
+    { text: "", page: "" }
+  ]
+});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -93,74 +116,99 @@ const BookEntry = ({ initialData, onSave }) => {
       {/* Header Decorativo */}
       <div className="w-24 h-6 bg-pink-100/50 absolute -top-2 left-1/2 -translate-x-1/2 rotate-2 shadow-sm"></div>
 
-      <header className="flex flex-col md:flex-row gap-8 mt-10">
-        {/* Portada del Libro */}
-        <div className="w-48 h-72 bg-stone-200 rounded-sm shadow-lg flex-shrink-0 relative overflow-hidden group border-4 border-white rotate-[-1deg]">
-          <img 
-            src={initialData?.cover || "https://via.placeholder.com/150"} 
-            className="w-full h-full object-cover" 
-            alt="cover"
-          />
-          {isEditing && (
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <Camera className="text-white" />
-            </div>
-          )}
-        </div>
-
-        {/* Info Principal */}
-        <div className="flex-1 space-y-4">
-          <div className="text-right text-[10px] tracking-widest text-slate-400 uppercase italic">
-            Entry Reference: {initialData?.id?.slice(0,8)}
+          <header className="flex flex-col md:flex-row gap-12 mt-10 items-start">
+      {/* Portada del Libro - Estilo Polaroids/Scrapbook */}
+      <div className="w-52 h-76 bg-stone-100 rounded-sm shadow-[0_10px_30px_rgba(0,0,0,0.1)] flex-shrink-0 relative overflow-hidden group border-[6px] border-white rotate-[-1.5deg] transition-transform hover:rotate-0 duration-300">
+        <img 
+          src={initialData?.cover || "https://via.placeholder.com/150"} 
+          className="w-full h-full object-cover" 
+          alt="book cover"
+        />
+        {isEditing && (
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <Camera className="text-white" size={32} />
           </div>
-          
+        )}
+      </div>
+
+      {/* Info Principal - Tipografía y Espaciados del Mockup */}
+      <div className="flex-1 space-y-8 pt-2">
+        <div className="space-y-2">
           {isEditing ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <input 
                 name="title"
                 value={bookData.title}
                 onChange={handleChange}
                 placeholder="Book Title"
-                className="text-2xl font-bold w-full bg-white border border-stone-200 px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-stone-300"
+                className="text-4xl font-serif font-medium w-full bg-transparent border-b border-stone-200 py-1 focus:outline-none focus:border-stone-400 text-stone-800"
               />
               <input 
                 name="author"
                 value={bookData.author}
                 onChange={handleChange}
                 placeholder="Author"
-                className="text-sm w-full bg-white border border-stone-200 px-2 py-1 rounded focus:outline-none font-sans"
+                className="text-lg text-stone-500 italic w-full bg-transparent border-b border-stone-100 py-1 focus:outline-none font-sans"
               />
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-bold text-slate-700 leading-tight">{bookData.title}</h1>
-              <p className="text-slate-400 italic">by {bookData.author}</p>
+              <h1 className="text-4xl font-serif font-medium text-stone-800 leading-tight tracking-tight">
+                {bookData.title}
+              </h1>
+              <p className="text-lg text-stone-500 italic font-sans">
+                by {bookData.author}
+              </p>
             </>
           )}
+        </div>
 
-          <div className="grid grid-cols-2 gap-y-3 text-xs pt-4 border-t border-stone-100 font-sans">
-            <span className="text-slate-400 uppercase tracking-tighter">Genre</span>
+        {/* Grid de Metadatos - Basado en image_59e8e2.png */}
+        <div className="space-y-5 pt-6 border-t border-stone-100 font-sans max-w-md">
+          {/* Formato */}
+          <div className="flex items-center gap-8 text-sm">
+            <span className="text-stone-400 w-24 uppercase tracking-widest text-[11px] font-semibold">Format</span>
+            <span className="text-stone-600 font-medium">Physical Book (Hardcover)</span>
+          </div>
+
+          {/* Género - Estilo Pastilla (Pill) del mockup */}
+          <div className="flex items-center gap-8 text-sm">
+            <span className="text-stone-400 w-24 uppercase tracking-widest text-[11px] font-semibold">Genre</span>
             {isEditing ? (
-              <input name="genre" value={bookData.genre} onChange={handleChange} className="border-b border-stone-200 focus:outline-none bg-transparent" />
+              <input name="genre" value={bookData.genre} onChange={handleChange} className="border-b border-stone-200 focus:outline-none bg-transparent text-stone-600" />
             ) : (
-              <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md w-fit">{bookData.genre}</span>
+              <span className="bg-[#f2ebe5] text-[#8c7e74] px-4 py-1.5 rounded-full text-xs font-medium">
+                {bookData.genre || 'Contemporary Fiction'}
+              </span>
             )}
+          </div>
 
-            <span className="text-slate-400 uppercase tracking-tighter">Reading Dates</span>
-            <div className="flex flex-col gap-1">
+          {/* Fechas de Lectura - Estilo Input del mockup */}
+          <div className="flex items-center gap-8 text-sm">
+            <span className="text-stone-400 w-24 uppercase tracking-widest text-[11px] font-semibold">Reading Dates</span>
+            <div className="flex items-center gap-2">
               {isEditing ? (
-                <div className="flex gap-1 items-center">
-                  <input type="date" name="startDate" value={bookData.startDate} onChange={handleChange} className="text-[10px] border rounded p-1" />
-                  <span>-</span>
-                  <input type="date" name="endDate" value={bookData.endDate} onChange={handleChange} className="text-[10px] border rounded p-1" />
+                <div className="flex gap-2 items-center">
+                  <input type="date" name="startDate" value={bookData.startDate} onChange={handleChange} className="bg-stone-50 border border-stone-200 rounded-md px-2 py-1 text-xs" />
+                  <span className="text-stone-300">—</span>
+                  <input type="date" name="endDate" value={bookData.endDate} onChange={handleChange} className="bg-stone-50 border border-stone-200 rounded-md px-2 py-1 text-xs" />
                 </div>
               ) : (
-                <span className="text-stone-500 font-medium">{bookData.startDate || '...'} — {bookData.endDate || '...'}</span>
+                <div className="flex items-center gap-3">
+                  <span className="bg-[#f9f5f2] border border-[#f0e7df] px-3 py-1.5 rounded-md text-stone-600 font-medium shadow-sm">
+                    {formatDate(bookData.startDate) || 'Oct 1, 2023'}
+                  </span>
+                  <span className="text-stone-300">—</span>
+                  <span className="bg-[#f9f5f2] border border-[#f0e7df] px-3 py-1.5 rounded-md text-stone-600 font-medium shadow-sm">
+                    {formatDate(bookData.endDate) || ''}
+                  </span>
+                </div>
               )}
             </div>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Sección Moods */}
       <section className="mt-16">

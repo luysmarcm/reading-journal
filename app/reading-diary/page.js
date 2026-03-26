@@ -1,46 +1,83 @@
 // app/journal/page.js
 import React from 'react';
 import { 
-  Search, 
-  SlidersHorizontal, 
-  CalendarDays, 
-  PencilLine, 
-  Share2, 
-  Star, 
-  Smile,
-  CheckCircle,
-  Quote,
-  LayoutGrid
+  CalendarDays, PencilLine, Share2, Star, Smile, CheckCircle, Quote, LayoutGrid 
 } from 'lucide-react';
+import Link from 'next/link';
+import SafeImage from '@/components/SafeImage'; 
 
-// --- FUNCIÓN DE API (SSR) ---
-// Traemos todas las entradas de la pestaña 'Entries'
-async function getAllEntries() {
+// --- FUNCIÓN PARA FORMATEAR LA FECHA ---
+const formatDate = (dateString) => {
+  if (!dateString) return 'Añadido recientemente';
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('es-ES', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    }).format(date);
+  } catch (e) { return dateString; }
+};
+
+// --- FUNCIÓN PARA OBTENER Y CRUZAR DATOS DE SHEETDB ---
+async function getJournalData() {
   const API_URL = 'https://sheetdb.io/api/v1/dszn7xxutj5w7';
   try {
-    const res = await fetch(`${API_URL}?sheet=Entries&timestamp=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Error al conectar con SheetDB');
-    const data = await res.json();
-    return data;
+    // Pedimos ambas pestañas en paralelo para cruzar la información
+    const [booksRes, entriesRes] = await Promise.all([
+      fetch(`${API_URL}?sheet=Books`, { cache: 'no-store' }),
+      fetch(`${API_URL}?sheet=Entries`, { cache: 'no-store' })
+    ]);
+
+    const books = await booksRes.json();
+    const entries = await entriesRes.json();
+
+    // Cruzamos la información de las dos hojas
+    return entries.map(entry => {
+      // Buscamos los detalles del libro usando el book_id de la entrada
+      const bookInfo = books.find(b => b.id === entry.book_id);
+      
+      return {
+        ...entry,
+        // Datos de identificación y visualización
+        display_title: bookInfo?.title || entry.title || "Sin título",
+        display_author: bookInfo?.author || entry.author || "Autor desconocido",
+        display_status: bookInfo?.status || "Sin estado",
+        display_cover: bookInfo?.cover || entry.cover,
+        linked_book_id: bookInfo?.id || entry.book_id,
+
+        // --- NUEVOS DATOS AGREGADOS ---
+        // Calificación (Rating)
+        rating: bookInfo?.rating || entry.rating || 0,
+        
+        // Fechas de lectura
+        date_start: bookInfo?.date_start || entry.date_start,
+        date_fin: bookInfo?.date_fin || entry.date_fin,
+        
+        // Metadatos del libro
+        format: bookInfo?.format || "Desconocido", // e.g., Digital, Físico
+        genre: bookInfo?.gener || bookInfo?.genre || "Sin género" // Mapeo de 'gener' del Excel
+      };
+    });
   } catch (error) {
-    console.error("Fetch error:", error);
-    return []; // Retorna array vacío en caso de error
+    console.error("Error cargando datos:", error);
+    return [];
   }
 }
 
-// --- COMPONENTE DE LA PÁGINA ---
 export default async function JournalDashboardPage() {
-  const allEntries = await getAllEntries();
+  const allEntries = await getJournalData();
 
-  // Función interna para renderizar estrellas según el rating
-  const renderRating = (rating) => {
-    const r = parseInt(rating) || 0;
+const renderRating = (rating) => {
+    // Usamos el operador ?? (nullish coalescing) para que si es 0, se quede en 0.
+    // Solo si es null o undefined usará el 0 (o el número que prefieras por defecto).
+    const r = rating !== undefined && rating !== null ? parseInt(rating) : 0; 
+    
     return (
       <div className="flex gap-1 text-amber-400">
         {[...Array(5)].map((_, i) => (
           <Star 
             key={i} 
-            size={16} 
+            size={14} 
+            // Si r es 0, i < r siempre será falso y ninguna estrella se rellenará
             fill={i < r ? "currentColor" : "none"} 
             className={i < r ? "" : "text-stone-200"} 
           />
@@ -51,107 +88,102 @@ export default async function JournalDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#fffcf9] p-6 md:p-10 font-sans text-stone-700">
-      <div className="max-w-7xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-12">
         
-        {/* --- HEADER SUPERIOR CON BUSCADOR --- */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-1">
             <h1 className="text-3xl font-serif text-stone-800 tracking-tight flex items-center gap-3">
               <LayoutGrid size={28} className="text-stone-300" /> Reading Diary
             </h1>
-            <p className="text-stone-400 text-sm max-w-lg">
-              A collection of your thoughts, quotes, and reading memories from all your books.
+            <p className="text-stone-400 text-sm">
+              Una colección de tus pensamientos y memorias de lectura.
             </p>
-          </div>
-          <div className="relative flex-1 md:w-80 w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 w-5 h-5 group-hover:text-stone-400" />
-            <input 
-              type="text" 
-              placeholder="Search your entries..." 
-              className="w-full pl-11 pr-4 py-2.5 bg-white border border-stone-100 rounded-full text-sm focus:outline-none focus:ring-1 focus:ring-pink-100 transition shadow-inner"
-            />
           </div>
         </header>
 
-        {/* --- BARRA DE FILTROS Y CLASIFICACIÓN --- */}
-        <section className="flex justify-between items-center gap-4 bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
-          <div className="flex gap-2 whitespace-nowrap overflow-x-auto pb-1">
-            <button className="px-5 py-2 rounded-full text-[11px] font-bold bg-pink-100 text-pink-700 shadow-sm">All Entries</button>
-            <button className="px-5 py-2 rounded-full text-[11px] font-medium text-stone-500 hover:bg-white transition">Reviews</button>
-            <button className="px-5 py-2 rounded-full text-[11px] font-medium text-stone-500 hover:bg-white transition">Quotes</button>
-            <button className="px-5 py-2 rounded-full text-[11px] font-medium text-stone-500 hover:bg-white transition">Reading Notes</button>
-          </div>
-          <button className="flex items-center gap-2.5 px-4 py-2 bg-white border border-stone-100 rounded-md text-xs font-medium text-stone-600 shadow-sm hover:border-pink-100 transition">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-stone-300" />
-            Filter & Sort
-          </button>
-        </section>
-
-        {/* --- LISTA DINÁMICA DE ENTRADAS DEL DIARIO --- */}
-        <main className="space-y-8 animate-in fade-in duration-700">
+        <main className="space-y-10 pb-16">
           {allEntries.length > 0 ? allEntries.map((entry, idx) => (
             
-            // --- CARD DE ENTRADA ÚNICA (Según Imagen 1) ---
-            <div key={idx} className="bg-white rounded-3xl p-8 shadow-[0_6px_30px_rgba(0,0,0,0.015)] border border-stone-100">
+            <div key={idx} className="bg-white rounded-[32px] p-10 shadow-[0_8px_40px_rgba(0,0,0,0.012)] border border-stone-100">
               
-              {/* Header de la Card (Fecha e Iconos) */}
-              <div className="flex justify-between items-center mb-10 pb-4 border-b border-stone-50">
-                <div className="flex items-center gap-3 text-sm text-stone-400 font-medium">
+              {/* Header de la tarjeta (Fecha y Acciones) */}
+              <div className="flex justify-between items-center mb-10 pb-5 border-b border-stone-100/60">
+                <div className="flex items-center gap-3 text-sm text-stone-400 font-medium uppercase tracking-wider">
                   <CalendarDays size={18} className="text-stone-300" />
-                  <span>{entry.date_string || 'Added recently'}</span>
+                  <span>{formatDate(entry.date_end || entry.date_start)}</span>
                 </div>
-                <div className="flex gap-2 text-stone-300">
-                  <button className="p-2 hover:bg-stone-50 rounded-full hover:text-stone-500"><PencilLine size={17} /></button>
-                  <button className="p-2 hover:bg-stone-50 rounded-full hover:text-stone-500"><Share2 size={17} /></button>
+                <div className="flex gap-2.5 text-stone-300">
+                  <Link href={`/entry/${entry.linked_book_id}`} className="p-2 hover:bg-stone-50 rounded-full hover:text-pink-500 transition-colors">
+                    <PencilLine size={18} />
+                  </Link>
+                  <button className="p-2 hover:bg-stone-50 rounded-full hover:text-stone-500 transition-colors">
+                    <Share2 size={18} />
+                  </button>
                 </div>
               </div>
 
-              {/* Contenido Principal de la Card */}
-              <div className="flex flex-col md:flex-row gap-12">
+              <div className="flex flex-row md:flex-row gap-12">
                 
-                {/* Bloque Izquierdo: Info del Libro */}
-                <div className="w-full md:w-64 flex-shrink-0 space-y-5">
-                  <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-xl border-4 border-white rotate-[-1deg] group">
-                    <img 
-                      src={entry.cover_url || "https://via.placeholder.com/300x400"} 
-                      alt={entry.title} 
-                      className="w-full h-full object-cover grayscale-[10%] group-hover:grayscale-0 transition duration-500"
-                    />
-                  </div>
-                  <div className="space-y-1.5 pt-2">
-                    <h2 className="font-serif text-[18px] leading-snug text-stone-800 line-clamp-2">{entry.title}</h2>
-                    <p className="text-stone-400 text-xs italic">by {entry.author}</p>
-                    <div className="pt-2">{renderRating(entry.rating)}</div>
+            {/* BLOQUE IZQUIERDO: Portada e Info Básica */}
+                <div className="w-full md:w-[420px] flex-shrink-0 space-y-5">
+                  
+                  {/* Contenedor Flex para Foto + Texto al lado */}
+                  <div className="flex items-start gap-6">
+                    
+                    {/* Portada con rotación */}
+                    <div className="w-32 md:w-36 flex-shrink-0">
+                      <div className="aspect-[3/4] rounded-lg overflow-hidden shadow-xl border-4 border-white rotate-[-1.5deg] bg-stone-100">
+                        <SafeImage 
+                          src={entry.display_cover} 
+                          alt={entry.display_title} 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                    </div>
+
+                    {/* Texto al lado de la foto (Título, Autor, Rating) */}
+                    <div className="flex-1 pt-2 space-y-1.5">
+                      <h2 className="font-serif text-[19px] leading-tight text-stone-800 line-clamp-3">
+                        {entry.display_title}
+                      </h2>
+                      <p className="text-stone-400 text-xs italic">
+                        by {entry.display_author}
+                      </p>
+                      <div className="pt-2">
+                        {renderRating(entry.rating)}
+                      </div>
+                       <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase bg-[#f5f0eb]/70 text-[#7c6a5a] w-fit">
+                      <Smile size={12} className="opacity-60" /> {entry.moods?.split(',')[0] || 'Reflexivo'}
+                    </span>
+                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase bg-[#e1f0e9] text-[#2c7553] w-fit">
+                      <CheckCircle size={12} className="opacity-70" /> {entry.display_status}
+                    </span>
+                    </div>
                   </div>
                   
-                  {/* Tags Decorativos */}
-                  <div className="flex flex-col gap-2.5 pt-4 border-t border-stone-50">
-                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase bg-stone-100/70 text-stone-500 w-fit">
-                      <Smile size={12} className="opacity-50" /> {entry.mood_tag || 'Reflective'}
-                    </span>
-                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-sans font-bold uppercase bg-emerald-50 text-emerald-700 w-fit">
-                      <CheckCircle size={12} className="opacity-70" /> {entry.status_tag || 'Finished'}
-                    </span>
+                  {/* Tags Debajo de la foto y el texto */}
+                  <div className="flex flex-col gap-2.5 pt-5 border-t border-stone-100/60">
+                   
                   </div>
                 </div>
 
-                {/* Bloque Derecho: Pensamientos y Cita */}
+                {/* BLOQUE DERECHO: Reflexiones y Citas (Viene de 'Entries') */}
                 <div className="flex-1 space-y-10">
-                  <div className="space-y-5">
-                    <h3 className="text-2xl font-serif text-stone-800">{entry.entry_title || 'Entry Title'}</h3>
-                    <p className="text-stone-600 leading-loose text-sm whitespace-pre-line font-sans">
-                      {entry.thoughts}
+                  <div className="space-y-6">
+                    <h3 className="text-2xl font-serif text-stone-800 tracking-tight">Reflections</h3>
+                    <p className="text-stone-600 leading-[1.95] text-[15px] whitespace-pre-line font-sans italic opacity-90">
+                      {entry.thoughts || "Aún no hay reflexiones para este libro."}
                     </p>
                   </div>
 
-                  {/* Bloque de Cita Estilizado */}
-                  {entry.quote_text && (
-                    <div className="bg-gradient-to-br from-pink-50/50 to-pink-100/20 p-8 rounded-2xl relative border border-pink-100/30 overflow-hidden shadow-inner">
-                      <Quote size={60} className="absolute -top-3 -right-3 text-pink-100 opacity-60" fill="currentColor" />
-                      <p className="italic text-stone-700 text-sm leading-relaxed whitespace-pre-line relative z-10 font-sans">
-                        “{entry.quote_text}”
+                  {/* Cita con borde rosa y fondo crema */}
+                  {entry.quotes && entry.quotes !== "" && entry.quotes.startsWith('[') && (
+                    <div className="bg-[#f9f5f2] p-8 rounded-2xl relative border border-[#f0e7df] shadow-inner">
+                      <Quote size={50} className="absolute -top-1 -right-1 text-stone-200 opacity-30" fill="currentColor" />
+                      <p className="italic text-stone-700 text-sm leading-relaxed relative z-10 font-sans">
+                        “{JSON.parse(entry.quotes)[0]?.text}”
                       </p>
-                      <div className="absolute left-0 top-0 h-full w-1.5 bg-pink-100 shadow-sm" />
+                      <div className="absolute left-0 top-0 h-full w-1.5 bg-[#f5c6c6]" />
                     </div>
                   )}
                 </div>
@@ -159,8 +191,8 @@ export default async function JournalDashboardPage() {
               </div>
             </div>
           )) : (
-            <div className="p-20 text-center text-stone-300 font-sans bg-white rounded-3xl border border-stone-100">
-               No entries recorded yet. Click 'Add Entry' to start journaling.
+            <div className="p-20 text-center text-stone-300 font-sans bg-white rounded-3xl border border-stone-100 border-dashed">
+               No se encontraron entradas en el diario.
             </div>
           )}
         </main>

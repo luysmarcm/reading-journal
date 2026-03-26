@@ -10,6 +10,7 @@ import {
   BookMarked,
   Plus
 } from 'lucide-react';
+import Link from 'next/link';
 
 const Sidebar = () => {
   const [activeTab, setActiveTab] = useState('Library');
@@ -18,7 +19,7 @@ const Sidebar = () => {
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Library', icon: Library, href: '/library' },
     { name: 'Gallery', icon: ImageIcon, href: '/gallery' },
-    { name: 'Reading Diary', icon: BookOpen, href: '/diary' },
+    { name: 'Reading Diary', icon: BookOpen, href: '/reading-diary' },
     { name: 'Authors', icon: Users, href: '/authors' },
     { name: 'Statistics', icon: BarChart3, href: '/statistics' },
   ];
@@ -42,7 +43,7 @@ const Sidebar = () => {
           const isActive = activeTab === item.name;
           
           return (
-            <button
+            <Link
               key={item.name}
               onClick={() => setActiveTab(item.name)}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group
@@ -50,13 +51,15 @@ const Sidebar = () => {
                   ? 'bg-[#F5D5D9] text-[#4A3F3F]' 
                   : 'text-gray-500 hover:bg-[#FCEAEB] hover:text-[#4A3F3F]'
                 }`}
+              href={item.href}
+
             >
               <Icon 
                 size={20} 
                 className={`${isActive ? 'text-[#4A3F3F]' : 'text-gray-400 group-hover:text-[#4A3F3F]'}`} 
               />
               <span className="text-sm font-medium">{item.name}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>
