@@ -258,11 +258,15 @@ function SearchModal({ onClose, onSelect }) {
                          <span className="text-[9px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-tighter">
                            {info.publishedDate}
                          </span>
-                         {info.pageCount && (
-                           <span className="text-[9px] bg-blue-50 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                             ~{info.pageCount} páginas
-                           </span>
-                         )}
+                         {info.pageCount > 0 ? (
+                            <span className="text-[9px] bg-blue-50 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                              ~{info.pageCount} páginas
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-orange-50 text-orange-400 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                              Páginas no disp.
+                            </span>
+                          )}
                       </div>
                     </div>
                   </div>
